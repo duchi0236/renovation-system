@@ -1,0 +1,201 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String?
+  phone     String?
+  avatar    String?
+  role      UserRole  @default(USER)
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  DESIGNER
+}
+
+// 装修项目表
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(DRAFT)
+  budget      Float?
+  area        Float?        // 面积
+  rooms       Int?          // 几室
+  livingRooms Int?          // 几厅
+  bathrooms   Int?           // 几卫
+  style       String?       // 风格
+  
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  
+  layouts     Layout[]
+  designs     Design[]
+  materials   Material[]
+  progress    Progress[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum ProjectStatus {
+  DRAFT           // 草稿
+  DEMAND_ANALYSIS // 需求分析中
+  DESIGNING       // 设计中
+  MATERIALS       // 材料选购
+  CONSTRUCTION   // 施工中
+  COMPLETED       // 已完成
+}
+
+// 户型表
+model Layout {
+  id          String     @id @default(cuid())
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id])
+  
+  name        String     // 户型名称
+  imageUrl    String?    // 原始户型图
+  layoutData  Json?      // 结构化户型数据
+  
+  // 分析结果
+  rooms       Json?      // 房间列表
+  walls      Json?      // 墙体数据
+  doors      Json?      // 门数据
+  windows    Json?      // 窗户数据
+  dimensions Json?      // 尺寸数据
+  
+  // 生成的方案
+  options     Json?      // 布局方案选项
+  
+  isSelected  Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// 设计方案表
+model Design {
+  id         String     @id @default(cuid())
+  projectId  String
+  project    Project    @relation(fields: [projectId], references: [id])
+  
+  type       DesignType
+  name       String
+  data       Json?      // 设计数据
+  
+  // 效果图
+  images     String[]   // 效果图链接
+  
+  status     DesignStatus @default(PENDING)
+  notes      String?
+  
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+enum DesignType {
+  LAYOUT      // 布局方案
+  RENDERING   // 效果图
+  CONSTRUCTION // 施工图
+  MATERIALS   // 材料清单
+}
+
+enum DesignStatus {
+  PENDING     // 待生成
+  GENERATING  // 生成中
+  COMPLETED   // 已完成
+  FAILED      // 失败
+}
+
+// 材料表
+model Material {
+  id         String     @id @default(cuid())
+  projectId  String
+  project    Project    @relation(fields: [projectId], references: [id])
+  
+  category   String     // 分类：地板/瓷砖/门/橱柜...
+  name       String
+  brand      String?
+  model      String?    // 型号
+  price      Float?
+  unit       String?    // 单位
+  quantity   Float?     // 数量
+  
+  imageUrl   String?
+  purchaseUrl String?   // 购买链接
+  
+  isSelected Boolean   @default(false)
+  
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+// 施工进度表
+model Progress {
+  id         String          @id @default(cuid())
+  projectId  String
+  project    Project         @relation(fields: [projectId], references: [id])
+  
+  phase      ConstructionPhase
+  status     ProgressStatus  @default(PENDING)
+  
+  startDate  DateTime?
+  endDate    DateTime?
+  
+  photos     String[]        // 施工照片
+  
+  issues     Json?          // 发现的问题
+  
+  notes      String?
+  
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+enum ConstructionPhase {
+  DEMOLITION   // 拆除
+  WATER        // 水电
+  ELECTRIC     // 电工
+  TILE         // 瓦工
+  WOOD         // 木工
+  PAINT        // 油漆
+  INSTALL      // 安装
+  CLEAN        // 保洁
+}
+
+enum ProgressStatus {
+  PENDING      // 待开始
+  IN_PROGRESS  // 进行中
+  COMPLETED    // 已完成
+  CHECKED      // 已验收
+}
+
+// 预算表
+model Budget {
+  id         String     @id @default(cuid())
+  projectId  String
+  project    Project    @relation(fields: [projectId], references: [id])
+  
+  category   String     // 预算分类
+  amount     Float      // 预算金额
+  spent      Float      @default(0) // 已花费
+  
+  items      Json?      // 明细
+  
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
